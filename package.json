@@ -1,0 +1,22 @@
+{
+  "name": "ainews",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "fetch:pkauth": "node scripts/fetch-pkauth.mjs",
+    "test": "node scripts/fetch-pkauth.mjs && node --test tests/*.test.mjs vendor/pkauth-core/tests/*.test.mjs vendor/pkauth-workers/tests/*.test.mjs",
+    "check": "find src scripts tests vendor -type f \\( -name '*.js' -o -name '*.mjs' \\) -print0 | xargs -0 -n1 node --check",
+    "check:auth": "node scripts/check-auth.mjs",
+    "check:inv": "node scripts/check-inv-p1-3.mjs",
+    "privacy": "node scripts/privacy-scan.mjs"
+  },
+  "devDependencies": {
+    "wrangler": "^4.157.0"
+  },
+  "dependencies": {
+    "@pkauth/core": "file:vendor/pkauth-core",
+    "@pkauth/workers": "file:vendor/pkauth-workers"
+  }
+}

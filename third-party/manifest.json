@@ -1,0 +1,117 @@
+{
+  "method": "Published npm tarball bytes and the passkey-demo git blob named by pkauth.lock.json. Not a guess from package names alone.",
+  "readability": {
+    "name": "@mozilla/readability",
+    "version": "0.6.0",
+    "license": "Apache-2.0",
+    "notice_file_in_package": false
+  },
+  "linkedom": {
+    "name": "linkedom",
+    "version": "0.18.13",
+    "license": "ISC"
+  },
+  "passkey_demo": {
+    "commit": "89a9453346369e7853c09b93982f8223b863a9e9",
+    "license_sha256": "80cbd1f2f9a6d82d743799447588d0caa64a51c0eb04c3a9929b067e2f1ae806"
+  },
+  "direct_deps_of_linkedom_0_18_13": {
+    "htmlparser2": "10.1.0",
+    "css-select": "7.0.0",
+    "cssom": "0.5.0",
+    "html-escaper": "3.0.3",
+    "uhyphen": "0.2.0"
+  },
+  "identical_bsd_2_clause_packages": [
+    "css-select@7.0.0",
+    "css-what@8.0.0",
+    "domutils@3.2.2",
+    "domutils@4.0.2",
+    "entities@4.2.0",
+    "entities@4.3.0",
+    "entities@4.3.1",
+    "entities@4.4.0",
+    "entities@4.5.0",
+    "entities@7.0.1",
+    "domhandler@5.0.2",
+    "domhandler@5.0.3",
+    "domhandler@6.0.0",
+    "domhandler@6.0.1",
+    "domelementtype@2.3.0",
+    "domelementtype@3.0.0",
+    "nth-check@3.0.1"
+  ],
+  "files": [
+    {
+      "path": "third-party/readability/LICENSE.md",
+      "sha256": "a5b1e8181751ce05b85b7bfaa832b785e87086250a5148e679d17ca9bdcfa958",
+      "bytes": 553
+    },
+    {
+      "path": "third-party/readability/APACHE-2.0.txt",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "bytes": 11358
+    },
+    {
+      "path": "third-party/linkedom/LICENSE",
+      "sha256": "dc6d4961d8b6ee747231582ae9c53ce1d66bf76bc9f5a28f554c0e97210953bf",
+      "bytes": 765
+    },
+    {
+      "path": "third-party/passkey-demo/LICENSE",
+      "sha256": "80cbd1f2f9a6d82d743799447588d0caa64a51c0eb04c3a9929b067e2f1ae806",
+      "bytes": 1063
+    },
+    {
+      "path": "third-party/npm/bsd-2-clause.txt",
+      "sha256": "cb992345949ccd6e8394b2cd6c465f7b897c864f845937dbf64e8997f389e164",
+      "bytes": 1260
+    },
+    {
+      "path": "third-party/npm/htmlparser2-10.1.0-LICENSE",
+      "sha256": "204cfa747341660e4da64cd23e8c876c6b20279d247f48564993d3fc4a2eab47",
+      "bytes": 1104
+    },
+    {
+      "path": "third-party/npm/cssom-0.5.0-LICENSE.txt",
+      "sha256": "e539937c489c4928ad7461669ec017f4d916fb3565fc26f5b8a0ce816d2ed23c",
+      "bytes": 1054
+    },
+    {
+      "path": "third-party/npm/html-escaper-3.0.3-LICENSE.txt",
+      "sha256": "27d06bbb2eb031be8aa376868a2e1f11b6acba938d4cc8e1234b66b9739c54a3",
+      "bytes": 1089
+    },
+    {
+      "path": "third-party/npm/uhyphen-0.2.0-LICENSE",
+      "sha256": "2b0748436e16684ec912b82f153343c6063ae7a7f24fac680058ca06bf02f2a7",
+      "bytes": 765
+    },
+    {
+      "path": "third-party/npm/boolbase-2.0.0-LICENSE",
+      "sha256": "cdf4d87ae0a6c160227263bf4e39a0a10e30e89ae7256e0f7ac7bde0836552c6",
+      "bytes": 751
+    },
+    {
+      "path": "third-party/npm/dom-serializer-2.0.0-LICENSE",
+      "sha256": "94cfe87de9b178e8fee313a19178e625129e2ce559db32e772e7bd95114ee6ff",
+      "bytes": 1098
+    },
+    {
+      "path": "third-party/npm/dom-serializer-3.1.1-LICENSE",
+      "sha256": "fd495b1bdd024995c6b3bd612584a4e37513250317bb5a6586f62c7756f9aff1",
+      "bytes": 1075
+    },
+    {
+      "path": "third-party/xregexp/LICENSE",
+      "sha256": "73af2949bff9296cb0f816c3be19a4da4e95adc94c1f924796e8bad3f03f2f29",
+      "bytes": 1106
+    }
+  ],
+  "xregexp": {
+    "commit": "95eeebeb8fac8754d54eafe2b4743661ac1cf028",
+    "cited_line": 794,
+    "license": "MIT",
+    "copied_extent": "one metacharacter class used by escapeRegex, plus the attribution comment already in linkedom worker.js"
+  }
+}

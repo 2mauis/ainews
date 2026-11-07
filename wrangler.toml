@@ -1,0 +1,67 @@
+# 从线上 Worker `ai-content-pipeline-gray` 只读导出（见 README）。
+# 本文件里的资源 id 都是占位符：本地开发前请自行填写，不要把真实值提交进仓库。
+name = "ai-content-pipeline-gray"
+main = "src/worker.js"
+compatibility_date = "2026-04-30"
+workers_dev = false
+
+[triggers]
+crons = ["0 0 * * *", "0 4 * * *", "0 8 * * *", "0 12 * * *", "0 16 * * *", "0 20 * * *"]
+
+[ai]
+binding = "AI"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "replace-me-d1-name"  # <D1_DATABASE_NAME>：本地填写
+database_id = "00000000-0000-0000-0000-000000000000"  # <D1_DATABASE_ID>：本地填写
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "replace-me-r2-bucket"  # <R2_BUCKET_NAME>：本地填写
+
+# 非敏感业务配置（导出时的线上值）
+[vars]
+AI_INPUT_NEURONS_PER_MILLION = "40909"
+AI_OUTPUT_NEURONS_PER_MILLION = "290909"
+ARCHIVE_RAW = "true"
+DAILY_AI_CALL_LIMIT = "100"
+DAILY_AI_NEURON_BUDGET = "10000"
+DAILY_ARTICLE_TARGET = "80"
+ENVIRONMENT = "gray"
+FEED_ENTRY_LIMIT = "12"
+FEED_RECENT_DAYS = "7"
+HACKNEWS_WEIGHT = "35"
+LINKWARDEN_COLLECTION_NAME = "AI 稍后读"
+LINKWARDEN_TAGS = "ai-news,read-later"
+MODEL = "@cf/qwen/qwen3.8-27b"
+PER_RUN_ARTICLE_LIMIT = "14"
+PUBLIC_BASE_URL = "https://ainews.example.com"
+RECENT_WINDOW_HOURS = "96"
+SOURCE_RECENT_LIMIT = "200"
+
+# pkauth（占位域名，真实值只放在部署环境，不入库）
+PKAUTH_ISSUER = "https://id.example.com"
+PKAUTH_CLIENT_ID = "ainews"
+PKAUTH_RESOURCE = "https://ainews.example.com/api"
+PKAUTH_ALLOWED_HOSTS = "ainews.example.com"
+PKAUTH_DEFAULT = "public"
+PKAUTH_MODE = "enforce"
+PKAUTH_RULES = '''
+[
+  {"prefix": "/subscriptions", "methods": ["GET", "HEAD"], "require": {"login": true, "feature": "ainews:feeds.read"}},
+  {"prefix": "/api/subscriptions", "methods": ["GET", "HEAD"], "require": {"login": true, "feature": "ainews:feeds.read"}},
+  {"prefix": "/api/subscriptions", "methods": ["POST", "PUT", "DELETE"], "require": {"login": true, "feature": "ainews:feeds.write", "csrf": true}}
+]
+'''
+PKAUTH_UPSTREAM_INJECT = '{"x-admin-token":"ADMIN_TOKEN"}'
+
+# 可选：同账户 service binding。P1 不启用，未绑定时组件走 HTTPS。
+# [[services]]
+# binding = "PKAUTH_IDP"
+# service = "pkauth-idp"
+
+# secrets（只记名字，值放 .dev.vars，不入库）：
+#   ADMIN_TOKEN, RUN_TOKEN, PKAUTH_COOKIE_SECRET
+# P2 起另加 PKAUTH_CLIENT_SECRET
+# 代码还会读取但导出时未绑定的可选项：SAVE_TOKEN, LINKWARDEN_BASE_URL, LINKWARDEN_TOKEN, LINKWARDEN_COLLECTION_ID

@@ -1,0 +1,29 @@
+{
+  "repo": "https://github.com/2mauis/passkey-demo.git",
+  "commit": "89a9453346369e7853c09b93982f8223b863a9e9",
+  "license": {
+    "from": "LICENSE",
+    "to": "vendor/PASSKEY-DEMO-LICENSE",
+    "sha256": "80cbd1f2f9a6d82d743799447588d0caa64a51c0eb04c3a9929b067e2f1ae806"
+  },
+  "copy": [
+    { "from": "packages/core", "to": "vendor/pkauth-core" },
+    { "from": "packages/workers", "to": "vendor/pkauth-workers" }
+  ],
+  "omit": [
+    {
+      "path": "packages/workers/tests/jose-cross.test.mjs",
+      "sha256": "835bf5c4e77515171acd2bf724eaffb66cca3a2e144e45e9fc47a2f0bdb31ded"
+    }
+  ],
+  "files": {
+    "packages/core/package.json": "333110587637b02b3fcfcf29f13699f825a43a33f1e40ecc26426aacf38f65ed",
+    "packages/core/src/index.js": "4f3c5c51e34f367dd3e9151cc0ca0b9251429fbad636bd040ba312faa13d7c64",
+    "packages/core/tests/core.test.mjs": "6521aab7d542b2c51cbe70c8d811d18639bf4fb7ed2c1ce83bef574a241cb587",
+    "packages/workers/package.json": "c9c64d0c9c430cb245d58ad2dfd493cd9da684526c3a3bfcbaffb7b56ac335d3",
+    "packages/workers/src/entry.js": "8ad0a3a9a4a8ec535885bde8c35c62b03d25468ab157f72cb89e8ee2c4d57cc0",
+    "packages/workers/src/index.js": "13bb2e94b7c0b3f9790fb6d288a59635682ed68eaf2fa49dbca9bfc13e1b2ae3",
+    "packages/workers/src/pages.js": "36f96a45830c403c0e470d37841d91b9bed1c253ba37ab17632cb4f1be963935",
+    "packages/workers/tests/sdk.test.mjs": "f854e76a2de551556a4885b0b2597808930613429063cdff0010ac41e8b08260"
+  }
+}

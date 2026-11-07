@@ -1,0 +1,29 @@
+name: tests
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  unit:
+    name: unit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with: { node-version: "22", cache: npm }
+      - run: node scripts/fetch-pkauth.mjs
+      - run: npm ci
+      - run: find src scripts tests vendor -type f \( -name '*.js' -o -name '*.mjs' \) -print0 | xargs -0 -n1 node --check
+      - run: npm test
+      - run: npm run check:auth
+      - run: npm run check:inv
+      - name: wrangler deploy --dry-run（只打包，不上传，不需要凭证）
+        run: npx wrangler deploy --dry-run --outdir /tmp/dry

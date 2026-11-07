@@ -1,0 +1,23 @@
+# 本仓库自定义 SAST 规则（semgrep / opengrep 兼容）
+rules:
+  - id: ainews-no-eval
+    languages: [javascript]
+    severity: ERROR
+    message: 禁止 eval / new Function
+    pattern-either:
+      - pattern: eval(...)
+      - pattern: new Function(...)
+  - id: ainews-no-math-random-for-secrets
+    languages: [javascript]
+    severity: ERROR
+    message: 安全相关随机数必须用 crypto.getRandomValues
+    paths:
+      include: [src/access/]
+    pattern: Math.random()
+  - id: ainews-jwt-verify-needs-algorithms
+    languages: [javascript]
+    severity: ERROR
+    message: jwtVerify 必须显式给出 algorithms 白名单
+    patterns:
+      - pattern: jwtVerify($T, $K, {...})
+      - pattern-not: "jwtVerify($T, $K, {..., algorithms: $A, ...})"
