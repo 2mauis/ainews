@@ -57,6 +57,10 @@ P1 规则只做本地判断：登录、feature（`ainews:feeds.read` / `ainews:f
 4. 确认自定义域的 Host 在 `PKAUTH_ALLOWED_HOSTS` 里，并且 `workers_dev` 保持关闭。同账户需要 service binding 时，再取消 `PKAUTH_IDP` 注释并填上真实服务名。
 5. 部署由 Jack 另行执行。回滚：把 `PKAUTH_MODE` 改为 `off`。
 
+## 独立测试环境
+
+`[env.test]` 只服务尚未创建的 Worker `ainews-test` 和主机 `ainews.spicas.cc`。顶层生产配置不动。issuer 仍是 `https://id.example.com`，因为真实 IdP 主机还没有。client id 用 `ainews-test`，避免和现有 client `ainews` 混用。cookie、admin、run 三个 secret 由运维在 Mac 上生成，不入库。部署顺序和验收见 [docs/specs/independent-test-env.md](specs/independent-test-env.md)。
+
 ## 本地检查
 
 ```sh
