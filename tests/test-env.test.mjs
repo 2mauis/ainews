@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import worker from '../src/worker.js';
 
+const spec = readFileSync(new URL('../docs/specs/independent-test-env.md', import.meta.url), 'utf8');
+
 const toml = readFileSync(new URL('../wrangler.toml', import.meta.url), 'utf8');
 
 function envSection(source) {
@@ -20,6 +22,13 @@ function envSection(source) {
 
 const testEnv = envSection(toml);
 const top = toml.slice(0, toml.indexOf('[env.test]'));
+
+test('部署说明不把 secret 写成已生成，并写明 versions upload', () => {
+  assert.match(spec, /这三个值还没有生成/);
+  assert.match(spec, /versions upload --env test --secrets-file/);
+  assert.match(spec, /versions deploy --env test/);
+  assert.doesNotMatch(spec, /Mac 上已生成/);
+});
 
 test('顶层生产配置保持原 Worker 名和 cron', () => {
   assert.match(top, /^name = "ai-content-pipeline-gray"$/m);

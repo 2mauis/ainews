@@ -59,9 +59,28 @@
 - 测试账户的 `ainews:feeds.read` 与 `ainews:feeds.write`。
 - 写操作还要同源 `Origin` 和 `X-PKAuth-CSRF: 1`。Bearer 不要求这个头。
 
+## 当前配置还不是完整应用
+
+`[env.test]` 没有 D1、R2、AI。这只够做鉴权失败测试：未登录 302/401、错误 Host 421、缺少 cookie secret 时 503。订阅读写、归档和摘要都还不能在线上跑。完整测试要等空的 `ainews-test-db`、`ainews-test-assets` 创建之后，把绑定写进 `[env.test]` 再发一版。id 不入库为账户 secret；绑定名可以进仓库，secret 值不行。
+
+## 绑定与 cron 的依据
+
+[Wrangler configuration](https://developers.cloudflare.com/workers/wrangler/configuration/) 写明：多数键会继承；`vars`、`r2_buckets` 等绑定不继承，每个环境要自己写。同一页的 Non-inheritable keys 列出了 `r2_buckets` 和 `vars`，没有点名 `d1_databases` 或 `ai`。本仓 Wrangler 4.157.0 的配置归一化把 `ai`、`d1_databases`、`r2_buckets` 都标成 notInheritable。本地 `wrangler deploy --dry-run --env test` 的绑定列表里只有 `[env.test.vars]`，没有 AI、D1、R2。
+
+`triggers` 会继承。同一页写明：要关掉 Cron，必须 `crons = []`；只注释 `crons` 不会关掉。test 环境因此写了 `[env.test.triggers]` 和 `crons = []`。
+
+## 首次上线的命令顺序
+
+依据是 [Secrets](https://developers.cloudflare.com/workers/configuration/secrets/)、[Wrangler workers commands](https://developers.cloudflare.com/workers/wrangler/commands/workers/) 和本机 `wrangler 4.157.0 --help`。下面每条都要带 `--env test`。不带 `--env` 会选中顶层 `ai-content-pipeline-gray`。本 PR 不执行这些命令。
+
+1. 先有一版代码，再挂 secret。`npx wrangler versions upload --env test --secrets-file <不入库的本地文件>` 把代码和最多 100 个 secret 打成一个版本。官方对该命令的说明是 uploaded version is not deployed immediately。4.157 help 写的是 Uploads your Worker code and config as a new Version，并写明 secrets are never deleted by deployments；`--secrets-file` 未列出的 secret 会从上一版保留。第一版没有上一版，所以三个名字要一次性写进那个本地文件：`PKAUTH_COOKIE_SECRET`、`ADMIN_TOKEN`、`RUN_TOKEN`。这三个值还没有生成。
+2. 不要用一串 `wrangler versions secret put` 来挂第一个 Worker 的多个 secret。官方没有写它在 Worker 不存在或还没有任何版本时能否成功，也没有写连续多次会不会带上前一次的 secret。4.157 程序在没有已上传版本时的错误文案是要先 upload；这不是官方文档句子，所以不把它当成已证实的公开步骤。`wrangler secret put` 则被官方写成 creates a new version and deploys it immediately，不能用。
+3. 上线用这一版的 version id：`npx wrangler versions deploy --env test`。官方说明 `wrangler deploy` 会创建新版本并立刻把流量切到 100%。4.157 的 deploy help 同样写 secrets are never deleted by deployments。因此之后的普通 `deploy --env test` 不会删掉已有 secret，但它上传的是新代码版本并立即上线，不是把第 1 步那个未部署版本原样升上去。指定版本上线只用 `versions deploy`。
+4. 自定义域什么时候绑上，官方没有写成 `versions upload` 或 `versions deploy` 的效果。单独写明会改 Routes、domains 和 Cron 的命令是实验性的 `wrangler triggers deploy`。在批准上线之前不要跑它。`ainews.spicas.cc` 已写在 `[[env.test.routes]]`，顶层没有这条路由。
+
 ## 数据
 
-`migrations/ainews-test-db.sql` 只根据 `src/index.js` 里的 SQL 语句推断，不是生产库导出。资源创建后只对空的 `ainews-test-db` 执行。本 PR 不执行。没有 D1 绑定时，鉴权失败仍然发生在进入 `env.DB` 之前。登录成功后的订阅读写才会碰到缺库，那时应失败，而不是改成不登录可读。
+`migrations/ainews-test-db.sql` 只根据 `src/index.js` 里的 SQL 语句推断，不是生产库导出，也还没有独立审查。审查通过之前不要在任何真实 D1 上执行，包括将来的空库 `ainews-test-db`。没有 D1 绑定时，鉴权失败仍然发生在进入 `env.DB` 之前。登录成功后的订阅读写才会碰到缺库，那时应失败，而不是改成不登录可读。
 
 R2 只在 `ARCHIVE_RAW=true` 且存在 `BUCKET` 时写入。test 环境两者都没有。官方说明单桶存储没有硬上限，也没有已证实的每桶固定费用；账户默认桶数量上限之上才另计。见 [R2 limits](https://developers.cloudflare.com/r2/platform/limits/)。D1 的库数量和容量随计划不同，见 [D1 limits](https://developers.cloudflare.com/d1/platform/limits/)。计划未读到，所以不判断这一个空库是否落在包含额度内。
 
@@ -75,4 +94,6 @@ R2 只在 `ARCHIVE_RAW=true` 且存在 `BUCKET` 时写入。test 环境两者都
 
 ## 是否重大改动
 
-部署、DNS、secret 和资源创建是重大改动，批准仍是 pending。本 spec 不代替该批准。Codex GitHub App 评审也是 pending；本执行端是 Cursor 里的 Grok，不把评审记成已经完成。
+用户已经尝试过测试部署授权。这里不再把「整项部署批准」说成还没人提过。本 PR 仍然不执行部署。workflow v2 的合并和 Codex 评审是另一件事，仍是 pending。执行端是 Cursor 里的 Grok，不把评审记成已经完成。
+
+应用已有文档把 IdP 写成 pkauth：`docs/auth.md` 的 issuer 占位是 `https://id.example.com`，未绑定 `PKAUTH_IDP` 时走 HTTPS，不新选一套外部登录服务。真实 issuer 主机名仍要用户定一次。在那之前，client `ainews-test` 无法完成登记。
