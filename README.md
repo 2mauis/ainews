@@ -30,4 +30,4 @@
 
 鉴权配置见 [docs/auth.md](docs/auth.md)。`src/index.js` 仍是只读导出的基线；入口改为 `src/worker.js`。
 
-**本仓不执行部署**；部署与 Cloudflare 配置由 Jack 手动完成。
+**本仓不执行部署**；部署与 Cloudflare 配置由 Jack 手动完成。独立测试环境见 [docs/specs/independent-test-env.md](docs/specs/independent-test-env.md)。不要用不带 `--env test` 的 `wrangler deploy` 去部署测试主机；那会更新顶层生产 Worker `ai-content-pipeline-gray`。

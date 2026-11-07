@@ -12862,7 +12862,14 @@ var index_default = {
     ctx.waitUntil(runDailyRefresh(env, { trigger: "cron", cron: event.cron }));
   }
 };
+function externalFetchOff(env) {
+  return String(env.EXTERNAL_FETCH || "").toLowerCase() === "off";
+}
+__name(externalFetchOff, "externalFetchOff");
 async function runDailyRefresh(env, options = {}) {
+  if (externalFetchOff(env)) {
+    return { ok: true, skipped: true, reason: "external fetch disabled" };
+  }
   const now = /* @__PURE__ */ new Date();
   const dayKey = localDay(now);
   const aiQuotaDay = utcDay(now);
@@ -13013,6 +13020,9 @@ async function runDailyRefresh(env, options = {}) {
 }
 __name(runDailyRefresh, "runDailyRefresh");
 async function refreshTopArticles(env, limit) {
+  if (externalFetchOff(env)) {
+    return { ok: true, skipped: true, reason: "external fetch disabled", refreshed: 0 };
+  }
   const now = /* @__PURE__ */ new Date();
   const aiQuotaDay = utcDay(now);
   const aiStatePrefix = `ai:${aiQuotaDay}`;

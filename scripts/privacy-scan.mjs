@@ -7,8 +7,22 @@
 //   node scripts/privacy-scan.mjs --stdin        扫标准输入（如 PR 正文）
 // 可选 PRIVACY_WORDLIST=<不入库的词表文件>，每行一个禁止出现的词（大小写不敏感）。
 // 命中时只输出 文件:行号 与规则名，不输出命中值本身。正则不能发现任意姓名或自然语言地址，仍需人工审查。
+import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { readFileSync, existsSync } from 'node:fs';
+
+// 只放行整文件字节已核对的上游许可证。版权行依法必须保留，不能改许可证原文。
+// 路径或字节任一不符就按普通文件扫描。这不放行其他邮箱、凭据或 Jack 的提交邮箱。
+export const REVIEWED_COPYRIGHT_FILES = {
+  'third-party/npm/boolbase-2.0.0-LICENSE': 'cdf4d87ae0a6c160227263bf4e39a0a10e30e89ae7256e0f7ac7bde0836552c6',
+  'third-party/npm/htmlparser2-10.1.0-LICENSE': '204cfa747341660e4da64cd23e8c876c6b20279d247f48564993d3fc4a2eab47',
+};
+
+export function isReviewedCopyrightFile(file, bytes) {
+  const expected = REVIEWED_COPYRIGHT_FILES[String(file).replaceAll('\\', '/')];
+  if (!expected) return false;
+  return createHash('sha256').update(bytes).digest('hex') === expected;
+}
 
 const ALLOW_EMAIL = /(@users\.noreply\.github\.com|@example\.(com|org|net)|@localhost|^git@github\.com)$/i;
 const DOC_IP = /^(192\.0\.2\.|198\.51\.100\.|203\.0\.113\.|127\.|0\.0\.0\.0$|255\.255\.255\.)/;
@@ -49,7 +63,10 @@ function main() {
   const [mode, ...rest] = process.argv.slice(2);
   let hits = [];
   if (mode === '--stdin') hits = scanText(readFileSync(0, 'utf8'), 'stdin');
-  else if (mode === '--files') for (const f of rest) hits.push(...scanText(readFileSync(f, 'utf8'), f));
+  else if (mode === '--files') for (const f of rest) {
+    const buf = readFileSync(f);
+    if (!buf.includes(0) && !isReviewedCopyrightFile(f, buf)) hits.push(...scanText(buf.toString('utf8'), f));
+  }
   else if (mode === '--diff') {
     let file = '', ln = 0;
     for (const line of git('diff', '--no-ext-diff', '-U0', `${rest[0]}...HEAD`).split('\n')) {
@@ -60,7 +77,7 @@ function main() {
   } else {
     for (const f of git('ls-files', '-z').split('\0').filter(Boolean)) {
       if (shouldSkip(f) || !existsSync(f)) continue;
-      const buf = readFileSync(f); if (buf.includes(0)) continue;
+      const buf = readFileSync(f); if (buf.includes(0) || isReviewedCopyrightFile(f, buf)) continue;
       hits.push(...scanText(buf.toString('utf8'), f));
     }
   }
