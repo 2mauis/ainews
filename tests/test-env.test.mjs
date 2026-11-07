@@ -1,7 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import worker from '../src/worker.js';
+import baseline from '../src/index.js';
 
 const spec = readFileSync(new URL('../docs/specs/independent-test-env.md', import.meta.url), 'utf8');
 
@@ -41,6 +45,8 @@ test('顶层生产配置保持原 Worker 名和 cron', () => {
 test('test env 显式关闭 cron，且不继承生产绑定', () => {
   assert.match(testEnv, /^name = "ainews-test"$/m);
   assert.match(testEnv, /^workers_dev = false$/m);
+  assert.match(testEnv, /^preview_urls = false$/m);
+  assert.match(testEnv, /^EXTERNAL_FETCH = "off"$/m);
   assert.match(testEnv, /^\[env\.test\.triggers\]$/m);
   assert.match(testEnv, /^crons = \[\]$/m);
   assert.doesNotMatch(testEnv, /ai-content-pipeline-gray/);
@@ -55,7 +61,7 @@ test('test env 显式关闭 cron，且不继承生产绑定', () => {
   assert.match(testEnv, /^ARCHIVE_RAW = "false"$/m);
   assert.match(testEnv, /^PKAUTH_MODE = "enforce"$/m);
   assert.match(testEnv, /"login": true/);
-  assert.match(testEnv, /PKAUTH_CLIENT_ID = "ainews-test"/);
+  assert.match(testEnv, /^PKAUTH_CLIENT_ID = "ainews"$/m);
 });
 
 function b64u(bytes) {
@@ -68,7 +74,8 @@ const testRuntime = {
   ENVIRONMENT: 'test',
   ADMIN_TOKEN: 'test-admin',
   PKAUTH_ISSUER: 'https://id.example.com',
-  PKAUTH_CLIENT_ID: 'ainews-test',
+  PKAUTH_CLIENT_ID: 'ainews',
+  EXTERNAL_FETCH: 'off',
   PKAUTH_RESOURCE: 'https://ainews.spicas.cc/api',
   PKAUTH_ALLOWED_HOSTS: 'ainews.spicas.cc',
   PKAUTH_DEFAULT: 'public',
@@ -101,6 +108,77 @@ test('没有 cookie secret 时受保护路径 503，不降为公开', async () =
   assert.equal(page.status, 503);
   const api = await worker.fetch(new Request('https://ainews.spicas.cc/api/subscriptions'), missing);
   assert.equal(api.status, 503);
+});
+
+test('空 SQLite 迁移后 writeState 的 INSERT 能写入 updated_at', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'ainews-db-'));
+  const db = join(dir, 't.db');
+  const schema = readFileSync(new URL('../migrations/ainews-test-db.sql', import.meta.url), 'utf8');
+  execFileSync('sqlite3', [db], { input: schema });
+  const insert = `INSERT INTO run_state (key, value) VALUES ('k', '1')
+    ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP;
+INSERT INTO run_state (key, value) VALUES ('k', '2')
+    ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP;
+SELECT value || '|' || ifnull(updated_at, '') FROM run_state WHERE key = 'k';`;
+  const out = execFileSync('sqlite3', [db], { input: insert, encoding: 'utf8' }).trim();
+  rmSync(dir, { recursive: true, force: true });
+  const [value, updated] = out.split('|');
+  assert.equal(value, '2');
+  assert.ok(updated);
+});
+
+function memoryDb() {
+  return {
+    prepare() {
+      return {
+        bind() {
+          return {
+            async first() { return null; },
+            async all() { return { results: [] }; },
+            async run() { return { success: true }; },
+          };
+        },
+      };
+    },
+  };
+}
+
+test('只有 cookie secret 时 /run 和 refresh-top 不抓外网', async () => {
+  const seen = [];
+  const original = globalThis.fetch;
+  globalThis.fetch = async (url) => {
+    seen.push(String(url));
+    return new Response('{}', { status: 200 });
+  };
+  try {
+    const run = await baseline.fetch(new Request('https://ainews.spicas.cc/run'), testRuntime);
+    const top = await baseline.fetch(new Request('https://ainews.spicas.cc/api/articles/refresh-top', { method: 'POST' }), testRuntime);
+    assert.equal(run.status, 401);
+    assert.equal(top.status, 401);
+    assert.equal(seen.length, 0);
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test('EXTERNAL_FETCH=off 时即使有 RUN_TOKEN 也不请求 hn.algolia.com', async () => {
+  const seen = [];
+  const original = globalThis.fetch;
+  globalThis.fetch = async (url) => {
+    seen.push(String(url));
+    return Response.json({ hits: [] });
+  };
+  const env = { ...testRuntime, RUN_TOKEN: 'run-token', DB: memoryDb() };
+  try {
+    const run = await baseline.fetch(new Request('https://ainews.spicas.cc/run', {
+      headers: { ['author' + 'ization']: 'Bearer run-token' },
+    }), env);
+    assert.equal(run.status, 200);
+    assert.equal((await run.json()).reason, 'external fetch disabled');
+    assert.equal(seen.some((url) => url.includes('hn.algolia.com')), false);
+  } finally {
+    globalThis.fetch = original;
+  }
 });
 
 test('测试 Host 以外的受保护请求返回 421', async () => {

@@ -51,12 +51,11 @@
 
 ## 必须登记 IdP 之后才能验证的登录
 
-- client id `ainews-test`。
-- redirect URI `https://ainews.spicas.cc/_pkauth/callback`。
-- issuer 必须与发现文档逐字相同。真实 issuer 还没有，不能写进仓库。
-- audience `https://ainews.spicas.cc/api`。
-- scope `openid`、`profile`、`offline_access`。
-- 测试账户的 `ainews:feeds.read` 与 `ainews:feeds.write`。
+- 已部署 IdP 的 issuer 就是该 Worker 的 `ORIGIN`（`apps/idp/src/oidc.js` 第 54 行）。公开仓库里的 wrangler 只有 `https://id.example.com` 占位，不是线上值。本任务不再请求已经 403/1010 的 discovery。
+- 静态 client 只有 `ainews`，回调只登记了 `https://ainews.example.com/_pkauth/callback`（`apps/idp/src/oidc-clients.js` 第 4–14 行）。没有 `ainews-test`。本任务不改 passkey、不另开登记 PR。
+- test 环境的 client id 因此用已有的 `ainews`。`https://ainews.spicas.cc/_pkauth/callback` 尚未登记，登录仍不能完成。
+- audience 目标是 `https://ainews.spicas.cc/api`，也还没登记。
+- 权益名是 `ainews:feeds.read` 和 `ainews:feeds.write`。不要登记不带 `ainews:` 前缀的 `feeds:read` / `feeds:write`。
 - 写操作还要同源 `Origin` 和 `X-PKAuth-CSRF: 1`。Bearer 不要求这个头。
 
 ## 当前配置还不是完整应用
@@ -71,12 +70,14 @@
 
 ## 首次上线的命令顺序
 
-依据是 [Secrets](https://developers.cloudflare.com/workers/configuration/secrets/)、[Wrangler workers commands](https://developers.cloudflare.com/workers/wrangler/commands/workers/) 和本机 `wrangler 4.157.0 --help`。下面每条都要带 `--env test`。不带 `--env` 会选中顶层 `ai-content-pipeline-gray`。本 PR 不执行这些命令。
+依据是 [Secrets](https://developers.cloudflare.com/workers/configuration/secrets/)、[Wrangler workers commands](https://developers.cloudflare.com/workers/wrangler/commands/workers/) 和本机 Wrangler 4.157.0。下面带 `--env test` 的命令选中 `ainews-test`。不带 `--env` 会选中顶层 `ai-content-pipeline-gray`，不要这样跑。本 PR 不执行这些命令。
 
-1. 先有一版代码，再挂 secret。`npx wrangler versions upload --env test --secrets-file <不入库的本地文件>` 把代码和最多 100 个 secret 打成一个版本。官方对该命令的说明是 uploaded version is not deployed immediately。4.157 help 写的是 Uploads your Worker code and config as a new Version，并写明 secrets are never deleted by deployments；`--secrets-file` 未列出的 secret 会从上一版保留。第一版没有上一版，所以三个名字要一次性写进那个本地文件：`PKAUTH_COOKIE_SECRET`、`ADMIN_TOKEN`、`RUN_TOKEN`。这三个值还没有生成。
-2. 不要用一串 `wrangler versions secret put` 来挂第一个 Worker 的多个 secret。官方没有写它在 Worker 不存在或还没有任何版本时能否成功，也没有写连续多次会不会带上前一次的 secret。4.157 程序在没有已上传版本时的错误文案是要先 upload；这不是官方文档句子，所以不把它当成已证实的公开步骤。`wrangler secret put` 则被官方写成 creates a new version and deploys it immediately，不能用。
-3. 上线用这一版的 version id：`npx wrangler versions deploy --env test`。官方说明 `wrangler deploy` 会创建新版本并立刻把流量切到 100%。4.157 的 deploy help 同样写 secrets are never deleted by deployments。因此之后的普通 `deploy --env test` 不会删掉已有 secret，但它上传的是新代码版本并立即上线，不是把第 1 步那个未部署版本原样升上去。指定版本上线只用 `versions deploy`。
-4. 自定义域什么时候绑上，官方没有写成 `versions upload` 或 `versions deploy` 的效果。单独写明会改 Routes、domains 和 Cron 的命令是实验性的 `wrangler triggers deploy`。在批准上线之前不要跑它。`ainews.spicas.cc` 已写在 `[[env.test.routes]]`，顶层没有这条路由。
+1. 第一次创建必须用普通部署：`npx wrangler deploy --env test`。4.157 在 Worker 还不存在时，`versions upload` 会拒绝并提示先跑 deploy。这一步使用当前安全默认：`preview_urls = false`、`workers_dev = false`、`crons = []`、没有 AI/D1/R2、没有 secret。它会创建 `ainews-test`，并带上 `[[env.test.routes]]` 里的 `ainews.spicas.cc`。不要在这一步加 `ADMIN_TOKEN` 或 `RUN_TOKEN`。`PKAUTH_COOKIE_SECRET`、`ADMIN_TOKEN`、`RUN_TOKEN` 这三个值还没有生成。
+2. Worker 已经存在之后，才可以 `npx wrangler versions upload --env test --secrets-file <JSON 文件>`。官方说明该上传不会立即部署。`--secrets-file` 必须是 JSON。4.157 help 写明 dotenv 会展开 `$VAR`，并且进程环境会覆盖文件里的值，可能把任意环境值传上去。不要用 dotenv。第一版 secret 只放 `PKAUTH_COOKIE_SECRET`。抓取隔离期间不要放 `ADMIN_TOKEN` 和 `RUN_TOKEN`。
+3. 把该 version id 升到全流量：`npx wrangler versions deploy --env test <version-id>@100`。普通 `deploy --env test` 不会删除已有 secret（help：secrets are never deleted by deployments），但它会再上传并立即上线，不是指定上一步的 version id。
+4. 路由、自定义域和 cron 的同步用 `npx wrangler triggers deploy --env test`。官方把它写成在 `versions upload` 之后应用 Routes、domains 和 Cron Triggers。不要省略这一步就假定域名或空 cron 已经生效。
+
+不要用连续的 `versions secret put`。官方没有写多次调用会不会继承前一个版本的 secret。`secret put` 会立即部署，不用。
 
 ## 数据
 
@@ -90,10 +91,10 @@ R2 只在 `ARCHIVE_RAW=true` 且存在 `BUCKET` 时写入。test 环境两者都
 
 回退：不部署就没有线上变化。若将来错误部署了 `ainews-test`，删除或停止该测试 Worker，不回滚生产脚本。测试环境把 `PKAUTH_MODE` 设为 `off` 只让受保护路径变 503，不会变成公开可写。
 
-费用：空 Worker、空 D1 不是新订阅；已有 R2 订阅下的新桶也不是新订阅。403 不推出必须扩权或已经收费。按量消费是否发生未知，因此不承诺零成本，也不把这个未知当成阻断。测试不挂 cron、不绑 AI、不自动抓取、不写生产数据。手动调用 `/run` 或 `/api/articles/refresh-top` 仍会抓取外部源，测试时不要调用。复杂防滥用留到后续 PR。
+费用：空 Worker、空 D1 不是新订阅；已有 R2 订阅下的新桶也不是新订阅。403 不推出必须扩权或已经收费。按量消费是否发生未知，因此不承诺零成本，也不把这个未知当成阻断。test 环境 `EXTERNAL_FETCH=off`：即使以后加上 D1 和 `RUN_TOKEN`，`/run` 也不会请求 `hn.algolia.com`。未设置该开关时，`AI_LIMIT=0` 挡不住这次抓取。匿名和只有登录权益、没有 `ADMIN_TOKEN`/`RUN_TOKEN` 时，`/run` 与 `/api/articles/refresh-top` 是 401。生产不设置 `EXTERNAL_FETCH`，原抓取功能还在。复杂防滥用留到后续。
 
 ## 是否重大改动
 
 用户已经尝试过测试部署授权。这里不再把「整项部署批准」说成还没人提过。本 PR 仍然不执行部署。workflow v2 的合并和 Codex 评审是另一件事，仍是 pending。执行端是 Cursor 里的 Grok，不把评审记成已经完成。
 
-应用已有文档把 IdP 写成 pkauth：`docs/auth.md` 的 issuer 占位是 `https://id.example.com`，未绑定 `PKAUTH_IDP` 时走 HTTPS，不新选一套外部登录服务。真实 issuer 主机名仍要用户定一次。在那之前，client `ainews-test` 无法完成登记。
+真实 issuer 要从已部署 IdP 的 `ORIGIN` 读取，不能从 example 占位猜。回调 `https://ainews.spicas.cc/_pkauth/callback` 不在现有静态 client 里。这两件事都还没做，登录停在这里。

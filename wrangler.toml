@@ -68,6 +68,7 @@ PKAUTH_UPSTREAM_INJECT = '{"x-admin-token":"ADMIN_TOKEN"}'
 [env.test]
 name = "ainews-test"
 workers_dev = false
+preview_urls = false
 
 # 显式空数组才会关掉 cron。只注释掉 crons 不会停用继承来的触发器。
 [env.test.triggers]
@@ -99,7 +100,8 @@ PER_RUN_ARTICLE_LIMIT = "1"
 RECENT_WINDOW_HOURS = "96"
 SOURCE_RECENT_LIMIT = "200"
 PKAUTH_ISSUER = "https://id.example.com"
-PKAUTH_CLIENT_ID = "ainews-test"
+PKAUTH_CLIENT_ID = "ainews"
+EXTERNAL_FETCH = "off"
 PKAUTH_RESOURCE = "https://ainews.spicas.cc/api"
 PKAUTH_ALLOWED_HOSTS = "ainews.spicas.cc"
 PKAUTH_DEFAULT = "public"
