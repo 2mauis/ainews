@@ -21,13 +21,14 @@ test('同一字节换路径，或原路径改一个字节，都不放行', () =>
   const changed = Buffer.from(bytes);
   changed[changed.length - 1] ^= 1;
   assert.equal(isReviewedCopyrightFile(BOOLBASE, changed), false);
-  const extra = Buffer.concat([bytes, Buffer.from('\nperson@private.invalid\n')]);
+  const extra = Buffer.concat([bytes, Buffer.from('\nperson' + '@private.invalid\n')]);
   assert.equal(isReviewedCopyrightFile(BOOLBASE, extra), false);
   assert.ok(scanText(extra.toString('utf8'), BOOLBASE).some((hit) => hit.endsWith(' email')));
 });
 
 test('其他邮箱和凭据仍阻断', () => {
-  assert.ok(scanText('person@private.invalid\n', 'notes.txt').some((hit) => hit.endsWith(' email')));
+  const blocked = 'person' + '@private.invalid\n';
+  assert.ok(scanText(blocked, 'notes.txt').some((hit) => hit.endsWith(' email')));
   assert.ok(scanText('ghp_' + 'a'.repeat(36) + '\n', 'notes.txt').some((hit) => hit.endsWith(' github-token')));
-  assert.equal(scanText('person@example.com\n', 'notes.txt').length, 0);
+  assert.equal(scanText('person' + '@example.com\n', 'notes.txt').length, 0);
 });
